@@ -23,44 +23,47 @@ def main():
         initial_sidebar_state="collapsed"
     )
     
-    # Premium Perplexity-inspired CSS
+    # Fixed CSS with proper spacing and working buttons
     st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     
-    /* Global reset and base */
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-    }
-    
-    /* Hide all Streamlit elements */
+    /* Hide ALL Streamlit elements aggressively */
     #MainMenu, footer, header, .stDeployButton, .stDecoration {
         visibility: hidden !important;
         height: 0 !important;
+        display: none !important;
     }
     
-    /* Main app container */
-    .stApp {
-        background: #0a0a0a;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        color: #ffffff;
+    /* Reset Streamlit's default spacing */
+    .main > div {
+        padding-top: 0rem !important;
+        padding-bottom: 0rem !important;
     }
     
-    .main .block-container {
-        padding: 0 !important;
+    .block-container {
+        padding-top: 0rem !important;
+        padding-bottom: 0rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
         max-width: none !important;
     }
     
-    /* Custom app container */
+    /* Main app styling */
+    .stApp {
+        background: #0a0a0a;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    
+    /* App container */
     .app-container {
         min-height: 100vh;
-        display: flex;
-        flex-direction: column;
         background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
         position: relative;
-        overflow: hidden;
+        padding: 2rem 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
     }
     
     .app-container::before {
@@ -74,162 +77,178 @@ def main():
         pointer-events: none;
     }
     
-    /* Header section */
+    /* Header - reduced spacing */
     .header-section {
         text-align: center;
-        padding: 60px 20px 40px;
+        margin-bottom: 2rem;
         position: relative;
         z-index: 2;
     }
     
     .app-logo {
-        font-size: 4rem;
-        margin-bottom: 16px;
+        font-size: 3rem;
+        margin-bottom: 0.5rem;
         filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.3));
     }
     
     .app-title {
-        font-size: 2.5rem;
+        font-size: 2rem;
         font-weight: 700;
         color: #ffffff;
-        margin-bottom: 8px;
+        margin-bottom: 0.5rem;
         text-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
     }
     
     .app-subtitle {
-        font-size: 1.1rem;
+        font-size: 1rem;
         color: #94a3b8;
         font-weight: 400;
         margin-bottom: 0;
     }
     
-    /* Main content area */
-    .content-section {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 0 20px 40px;
+    /* Chat container */
+    .chat-container {
+        width: 100%;
+        max-width: 700px;
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(51, 65, 85, 0.3);
+        border-radius: 20px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
         position: relative;
         z-index: 2;
     }
     
-    /* Chat container */
-    .chat-container {
-        width: 100%;
-        max-width: 800px;
-        background: rgba(15, 23, 42, 0.6);
-        backdrop-filter: blur(20px);
-        border: 1px solid rgba(51, 65, 85, 0.3);
-        border-radius: 24px;
-        padding: 32px;
-        margin-bottom: 32px;
-        box-shadow: 
-            0 20px 25px -5px rgba(0, 0, 0, 0.4),
-            0 10px 10px -5px rgba(0, 0, 0, 0.2);
+    /* Start button styling */
+    .start-section {
+        text-align: center;
+        padding: 1rem 0;
     }
     
-    /* Input section */
+    .start-label {
+        display: block;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #ffffff;
+        margin-bottom: 1.5rem;
+    }
+    
+    /* Override Streamlit button styling */
+    .stButton {
+        display: flex !important;
+        justify-content: center !important;
+        width: 100% !important;
+    }
+    
+    .stButton > button {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 12px !important;
+        padding: 1rem 2rem !important;
+        font-size: 1rem !important;
+        font-weight: 600 !important;
+        font-family: 'Inter', sans-serif !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.4) !important;
+        width: 300px !important;
+        height: 60px !important;
+    }
+    
+    .stButton > button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 15px 35px -5px rgba(59, 130, 246, 0.6) !important;
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+    }
+    
+    .stButton > button:active {
+        transform: translateY(0) !important;
+    }
+    
+    /* Form styling */
+    .stForm {
+        border: none !important;
+        background: transparent !important;
+    }
+    
+    /* Input styling */
     .input-section {
-        margin-bottom: 24px;
+        margin-bottom: 1.5rem;
     }
     
     .input-label {
         display: block;
-        font-size: 14px;
+        font-size: 1rem;
         font-weight: 500;
         color: #cbd5e1;
-        margin-bottom: 12px;
+        margin-bottom: 0.75rem;
         text-align: left;
     }
     
-    .custom-input {
-        width: 100%;
-        background: rgba(30, 41, 59, 0.8);
-        border: 1px solid rgba(51, 65, 85, 0.5);
-        border-radius: 16px;
-        padding: 16px 20px;
-        font-size: 16px;
-        color: #ffffff;
-        font-family: 'Inter', sans-serif;
-        transition: all 0.3s ease;
-        resize: none;
-        min-height: 60px;
+    .stTextArea > div > div > textarea {
+        background: rgba(30, 41, 59, 0.8) !important;
+        border: 1px solid rgba(51, 65, 85, 0.5) !important;
+        border-radius: 12px !important;
+        color: #ffffff !important;
+        font-family: 'Inter', sans-serif !important;
+        font-size: 1rem !important;
+        padding: 1rem !important;
     }
     
-    .custom-input:focus {
-        outline: none;
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        background: rgba(30, 41, 59, 0.9);
+    .stTextArea > div > div > textarea:focus {
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+        background: rgba(30, 41, 59, 0.9) !important;
     }
     
-    .custom-input::placeholder {
-        color: #64748b;
+    .stTextArea > div > div > textarea::placeholder {
+        color: #64748b !important;
     }
     
-    /* Buttons */
-    .button-row {
-        display: flex;
-        gap: 16px;
-        margin-top: 16px;
+    /* Form buttons */
+    .stForm .stButton > button {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+        width: 100% !important;
+        margin: 0.25rem 0 !important;
+        height: 45px !important;
+        font-size: 0.9rem !important;
+        padding: 0.75rem 1rem !important;
     }
     
-    .premium-button {
-        flex: 1;
-        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-        border: none;
-        border-radius: 12px;
-        padding: 14px 24px;
-        font-size: 15px;
-        font-weight: 600;
-        color: white;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        font-family: 'Inter', sans-serif;
-        position: relative;
-        overflow: hidden;
+    .stForm .stButton:first-of-type > button {
+        background: linear-gradient(135deg, #10b981, #059669) !important;
     }
     
-    .premium-button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.4);
+    .stForm .stButton:last-of-type > button {
+        background: rgba(51, 65, 85, 0.8) !important;
     }
     
-    .premium-button:active {
-        transform: translateY(0);
-    }
-    
-    .premium-button.secondary {
-        background: rgba(51, 65, 85, 0.8);
-        color: #e2e8f0;
-    }
-    
-    .premium-button.secondary:hover {
-        background: rgba(51, 65, 85, 1);
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    .stForm .stButton > button:hover {
+        transform: translateY(-1px) !important;
+        box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3) !important;
     }
     
     /* Messages */
     .messages-area {
         max-height: 400px;
         overflow-y: auto;
-        margin: 24px 0;
+        margin: 1.5rem 0;
     }
     
     .message {
-        margin-bottom: 20px;
+        margin-bottom: 1rem;
         animation: slideIn 0.5s ease-out;
     }
     
     .message-bubble {
-        padding: 16px 20px;
-        border-radius: 18px;
+        padding: 1rem 1.25rem;
+        border-radius: 16px;
         max-width: 85%;
         word-wrap: break-word;
-        font-size: 15px;
+        font-size: 0.95rem;
         line-height: 1.5;
-        position: relative;
     }
     
     .message.user {
@@ -258,47 +277,48 @@ def main():
     
     /* Audio player */
     .audio-player {
-        margin: 12px 0;
-        padding: 12px;
+        margin: 0.75rem 0;
+        padding: 0.75rem;
         background: rgba(15, 23, 42, 0.8);
-        border-radius: 12px;
+        border-radius: 10px;
         border: 1px solid rgba(51, 65, 85, 0.3);
     }
     
     .audio-player audio {
         width: 100%;
-        height: 40px;
-        filter: brightness(1.2) contrast(1.1);
+        height: 35px;
     }
     
     .audio-status {
-        font-size: 12px;
+        font-size: 0.75rem;
         color: #64748b;
         text-align: center;
-        margin-top: 8px;
+        margin-top: 0.5rem;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 6px;
+        gap: 0.5rem;
     }
     
     /* Ski recommendations */
     .recommendations-container {
         width: 100%;
         max-width: 1000px;
-        margin-top: 32px;
+        margin-top: 2rem;
+        position: relative;
+        z-index: 2;
     }
     
     .recommendations-header {
         text-align: center;
-        margin-bottom: 32px;
+        margin-bottom: 2rem;
     }
     
     .recommendations-title {
-        font-size: 1.8rem;
+        font-size: 1.75rem;
         font-weight: 700;
         color: #ffffff;
-        margin-bottom: 8px;
+        margin-bottom: 0.5rem;
     }
     
     .recommendations-subtitle {
@@ -308,17 +328,16 @@ def main():
     
     .ski-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        gap: 24px;
-        margin-bottom: 40px;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
     }
     
     .ski-card {
         background: rgba(15, 23, 42, 0.8);
         backdrop-filter: blur(20px);
         border: 1px solid rgba(51, 65, 85, 0.3);
-        border-radius: 20px;
-        padding: 28px;
+        border-radius: 16px;
+        padding: 1.5rem;
         transition: all 0.4s ease;
         position: relative;
         overflow: hidden;
@@ -330,15 +349,15 @@ def main():
         top: 0;
         left: 0;
         right: 0;
-        height: 4px;
+        height: 3px;
         background: linear-gradient(90deg, #3b82f6, #1d4ed8, #7c3aed);
         opacity: 0;
         transition: opacity 0.3s ease;
     }
     
     .ski-card:hover {
-        transform: translateY(-8px);
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        transform: translateY(-4px);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
         border-color: rgba(59, 130, 246, 0.5);
     }
     
@@ -347,33 +366,33 @@ def main():
     }
     
     .ski-name {
-        font-size: 1.2rem;
+        font-size: 1.1rem;
         font-weight: 700;
         color: #ffffff;
-        margin-bottom: 12px;
+        margin-bottom: 0.75rem;
         line-height: 1.3;
     }
     
     .ski-description {
         color: #cbd5e1;
-        font-size: 14px;
+        font-size: 0.9rem;
         line-height: 1.5;
-        margin-bottom: 24px;
+        margin-bottom: 1.5rem;
     }
     
     .shop-links {
         display: grid;
         grid-template-columns: 1fr 1fr 1fr;
-        gap: 8px;
+        gap: 0.5rem;
     }
     
     .shop-link {
         background: rgba(51, 65, 85, 0.8);
         color: #e2e8f0;
         text-decoration: none;
-        padding: 10px 16px;
-        border-radius: 10px;
-        font-size: 13px;
+        padding: 0.6rem 1rem;
+        border-radius: 8px;
+        font-size: 0.8rem;
         font-weight: 600;
         text-align: center;
         transition: all 0.3s ease;
@@ -384,15 +403,15 @@ def main():
         background: #3b82f6;
         color: white;
         text-decoration: none;
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
     }
     
     /* Animations */
     @keyframes slideIn {
         from {
             opacity: 0;
-            transform: translateY(20px);
+            transform: translateY(15px);
         }
         to {
             opacity: 1;
@@ -400,38 +419,37 @@ def main():
         }
     }
     
-    /* Scrollbar styling */
+    /* Scrollbar */
     .messages-area::-webkit-scrollbar {
-        width: 6px;
+        width: 4px;
     }
     
     .messages-area::-webkit-scrollbar-track {
         background: rgba(30, 41, 59, 0.3);
-        border-radius: 3px;
+        border-radius: 2px;
     }
     
     .messages-area::-webkit-scrollbar-thumb {
         background: rgba(59, 130, 246, 0.5);
-        border-radius: 3px;
-    }
-    
-    .messages-area::-webkit-scrollbar-thumb:hover {
-        background: rgba(59, 130, 246, 0.7);
+        border-radius: 2px;
     }
     
     /* Mobile responsiveness */
     @media (max-width: 768px) {
+        .app-container {
+            padding: 1rem 0.5rem;
+        }
+        
         .app-logo {
-            font-size: 3rem;
+            font-size: 2.5rem;
         }
         
         .app-title {
-            font-size: 2rem;
+            font-size: 1.75rem;
         }
         
         .chat-container {
-            margin: 0 10px 20px;
-            padding: 24px 20px;
+            padding: 1.5rem;
         }
         
         .message-bubble {
@@ -440,18 +458,16 @@ def main():
         
         .ski-grid {
             grid-template-columns: 1fr;
-            gap: 20px;
         }
         
         .shop-links {
             grid-template-columns: 1fr;
-            gap: 8px;
+            gap: 0.5rem;
         }
-    }
-    
-    /* Hide Streamlit elements more aggressively */
-    .stTextInput, .stButton {
-        display: none !important;
+        
+        .stButton > button {
+            width: 100% !important;
+        }
     }
     </style>
     """, unsafe_allow_html=True)
@@ -469,7 +485,7 @@ def main():
     # Main app structure
     st.markdown('<div class="app-container">', unsafe_allow_html=True)
     
-    # Header
+    # Header - reduced spacing
     st.markdown('''
     <div class="header-section">
         <div class="app-logo">🎿</div>
@@ -478,33 +494,18 @@ def main():
     </div>
     ''', unsafe_allow_html=True)
     
-    # Content section
-    st.markdown('<div class="content-section">', unsafe_allow_html=True)
-    
     # Chat interface
     st.markdown('<div class="chat-container">', unsafe_allow_html=True)
     
     if not st.session_state.conversation_started:
         st.markdown('''
-        <div class="input-section">
-            <label class="input-label">Ready to find your perfect skis?</label>
-            <div style="text-align: center; padding: 20px 0;">
-                <button class="premium-button" onclick="startConversation()">
-                    🚀 Start Ski Consultation
-                </button>
-            </div>
+        <div class="start-section">
+            <label class="start-label">Ready to find your perfect skis?</label>
         </div>
-        
-        <script>
-        function startConversation() {
-            // This will trigger the Streamlit rerun
-            document.querySelector('[data-testid="stButton"] button').click();
-        }
-        </script>
         ''', unsafe_allow_html=True)
         
-        # Hidden Streamlit button
-        if st.button("Start", key="start_hidden"):
+        # Working Streamlit button
+        if st.button("🚀 Start Ski Consultation", key="start_consultation"):
             st.session_state.conversation_started = True
             welcome = "Hi! I'm your personal ski concierge. Tell me about your skiing experience, preferred terrain, and budget, and I'll recommend the perfect skis for you."
             welcome_audio = create_openai_audio(welcome)
@@ -518,15 +519,16 @@ def main():
     else:
         # Input form
         with st.form("ski_question_form", clear_on_submit=True):
-            st.markdown('''
-            <label class="input-label">What would you like to know about skis?</label>
-            ''', unsafe_allow_html=True)
+            st.markdown('<div class="input-section">', unsafe_allow_html=True)
+            st.markdown('<label class="input-label">What would you like to know about skis?</label>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
             
             user_question = st.text_area(
                 "",
                 placeholder="e.g., I'm an intermediate skier looking for all-mountain skis under $500 for East Coast conditions...",
-                height=80,
-                key="question_input"
+                height=100,
+                key="question_input",
+                label_visibility="collapsed"
             )
             
             col1, col2 = st.columns(2)
@@ -596,7 +598,6 @@ def main():
         
         st.markdown('</div></div>', unsafe_allow_html=True)
     
-    st.markdown('</div>', unsafe_allow_html=True)  # Close content-section
     st.markdown('</div>', unsafe_allow_html=True)  # Close app-container
 
 def process_question(user_question):
@@ -649,7 +650,7 @@ def get_ski_advice(user_input):
         )
         return response.choices[0].message.content
     except Exception as e:
-        return "I'd be happy to help you find the perfect skis! Could you tell me more about your skiing experience, preferred terrain, and budget? I'm having a brief connection issue but I'm here to help!"
+        return "I'd be happy to help you find the perfect skis! Could you tell me more about your skiing experience, preferred terrain, and budget? I'm here to provide expert recommendations!"
 
 def create_openai_audio(text):
     """Create natural audio using OpenAI voice API"""
@@ -677,7 +678,6 @@ def create_openai_audio(text):
         <div class="audio-player">
             <audio controls autoplay>
                 <source src="data:audio/mp3;base64,{audio_b64}" type="audio/mp3">
-                Your browser does not support the audio element.
             </audio>
             <div class="audio-status">
                 🎤 <span>AI voice response</span>
