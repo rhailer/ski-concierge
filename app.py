@@ -2,7 +2,6 @@ import streamlit as st
 import openai
 import os
 from dotenv import load_dotenv
-import speech_recognition as sr
 import base64
 import time
 import re
@@ -10,6 +9,11 @@ import re
 # Load environment variables
 load_dotenv()
 openai.api_key = os.getenv('OPENAI_API_KEY')
+
+# Check for API key
+if not openai.api_key:
+    st.error("⚠️ OpenAI API key not found. Please add OPENAI_API_KEY to Streamlit secrets.")
+    st.stop()
 
 def main():
     st.set_page_config(
@@ -62,55 +66,18 @@ def main():
         font-weight: 500;
     }
     
-    /* Speak button */
-    .speak-btn-container {
-        margin: 30px 0;
-    }
-    
-    .speak-button {
-        width: 90px;
-        height: 90px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        border: none;
-        color: white;
-        font-size: 32px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    .speak-button:hover {
-        transform: translateY(-3px) scale(1.05);
-        box-shadow: 0 20px 40px rgba(102, 126, 234, 0.5);
-    }
-    
-    .speak-button:active {
-        transform: translateY(-1px) scale(0.98);
-    }
-    
-    .speak-button.listening {
-        background: linear-gradient(135deg, #ef4444, #f97316);
-        animation: listening-pulse 1.5s infinite;
-    }
-    
-    @keyframes listening-pulse {
-        0%, 100% { 
-            transform: scale(1); 
-            box-shadow: 0 15px 35px rgba(239, 68, 68, 0.4); 
-        }
-        50% { 
-            transform: scale(1.1); 
-            box-shadow: 0 25px 50px rgba(239, 68, 68, 0.6); 
-        }
+    /* Text input styling */
+    .chat-input-container {
+        margin: 20px 0;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 15px;
+        border: 2px solid #e2e8f0;
     }
     
     /* Messages */
     .messages-container {
-        max-height: 300px;
+        max-height: 400px;
         overflow-y: auto;
         margin: 25px 0;
         padding: 0 10px;
@@ -222,26 +189,36 @@ def main():
         transform: translateY(-1px);
     }
     
-    /* Control buttons */
-    .control-section {
-        margin: 25px 0;
-        padding-top: 20px;
-        border-top: 1px solid #e2e8f0;
-    }
-    
+    /* Buttons */
     .stButton > button {
-        background: linear-gradient(135deg, #48bb78, #38a169) !important;
+        background: linear-gradient(135deg, #667eea, #764ba2) !important;
         color: white !important;
         border: none !important;
         border-radius: 12px !important;
-        padding: 8px 20px !important;
-        font-weight: 500 !important;
+        padding: 12px 24px !important;
+        font-weight: 600 !important;
+        font-size: 16px !important;
+        width: 100% !important;
         transition: all 0.2s ease !important;
+        margin: 8px 0 !important;
     }
     
     .stButton > button:hover {
-        background: linear-gradient(135deg, #38a169, #2f855a) !important;
+        background: linear-gradient(135deg, #5a67d8, #6b46c1) !important;
         transform: translateY(-1px) !important;
+    }
+    
+    /* Text input */
+    .stTextInput > div > div > input {
+        border-radius: 12px !important;
+        border: 2px solid #e2e8f0 !important;
+        padding: 12px 16px !important;
+        font-size: 16px !important;
+    }
+    
+    .stTextInput > div > div > input:focus {
+        border-color: #667eea !important;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important;
     }
     
     /* Scrollbar */
@@ -264,9 +241,6 @@ def main():
     if 'messages' not in st.session_state:
         st.session_state.messages = []
     
-    if 'listening' not in st.session_state:
-        st.session_state.listening = False
-    
     if 'recommended_skis' not in st.session_state:
         st.session_state.recommended_skis = []
     
@@ -279,63 +253,47 @@ def main():
     # Header
     st.markdown('''
     <div class="app-title">🎿 Ski Concierge</div>
-    <div class="app-subtitle">Your AI ski expert</div>
+    <div class="app-subtitle">Your AI ski expert • Now with voice responses!</div>
     ''', unsafe_allow_html=True)
     
-    # Status text
+    # Start conversation or show interface
     if not st.session_state.conversation_started:
-        status = "Tap the button to start chatting about skis"
-    elif st.session_state.listening:
-        status = "🎙️ Listening... speak now!"
-    else:
-        status = "Tap to ask about skis"
-    
-    st.markdown(f'<div class="status-text">{status}</div>', unsafe_allow_html=True)
-    
-    # Speak button
-    button_class = "listening" if st.session_state.listening else ""
-    button_icon = "🎙️" if st.session_state.listening else "🎤"
-    
-    st.markdown(f'''
-    <div class="speak-btn-container">
-        <button class="speak-button {button_class}" onclick="document.getElementById('hidden_speak').click();">
-            {button_icon}
-        </button>
-    </div>
-    ''', unsafe_allow_html=True)
-    
-    # Hidden Streamlit button
-    if st.button("Speak", key="hidden_speak"):
-        st.session_state.listening = True
+        st.markdown('<div class="status-text">Ready to help you find the perfect skis!</div>', unsafe_allow_html=True)
         
-        if not st.session_state.conversation_started:
+        if st.button("🚀 Start Conversation", key="start_conversation"):
             st.session_state.conversation_started = True
-            welcome = "Hi! I'm your ski concierge. What's your experience level and what skis are you looking for?"
+            welcome = "Hi! I'm your ski concierge. What's your experience level and what type of skis are you looking for?"
             welcome_audio = create_openai_audio(welcome)
             st.session_state.messages.append({
                 "role": "assistant",
                 "content": welcome,
                 "audio": welcome_audio
             })
-            st.session_state.listening = False
             st.rerun()
-        else:
-            # Listen for speech
-            with st.spinner("🎧 Listening..."):
-                user_speech = listen_for_speech()
-            
-            st.session_state.listening = False
-            
-            if user_speech and user_speech not in ["TIMEOUT", "UNCLEAR", "ERROR"]:
+    
+    else:
+        # Chat interface
+        st.markdown('<div class="status-text">Ask me anything about skis!</div>', unsafe_allow_html=True)
+        
+        # Text input for questions
+        user_question = st.text_input(
+            "Type your ski question:", 
+            placeholder="e.g., I'm a beginner looking for all-mountain skis under $400...",
+            key="user_input"
+        )
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("💬 Send Question") and user_question:
                 # Add user message
                 st.session_state.messages.append({
                     "role": "user",
-                    "content": user_speech
+                    "content": user_question
                 })
                 
                 # Get AI response
-                with st.spinner("🤔 Getting recommendations..."):
-                    response = get_ski_advice(user_speech)
+                with st.spinner("🤔 Getting ski recommendations..."):
+                    response = get_ski_advice(user_question)
                     audio_html = create_openai_audio(response)
                 
                 # Extract ski recommendations
@@ -350,11 +308,13 @@ def main():
                 })
                 
                 st.rerun()
-            else:
-                if user_speech == "TIMEOUT":
-                    st.info("💭 No speech detected - try again when ready")
-                else:
-                    st.warning("🎯 Couldn't understand - please speak clearly")
+        
+        with col2:
+            if st.button("🔄 New Conversation"):
+                st.session_state.messages = []
+                st.session_state.recommended_skis = []
+                st.session_state.conversation_started = False
+                st.rerun()
     
     # Display messages
     if st.session_state.messages:
@@ -396,36 +356,7 @@ def main():
         
         st.markdown('</div>', unsafe_allow_html=True)
     
-    # Control section
-    if st.session_state.messages:
-        st.markdown('<div class="control-section">', unsafe_allow_html=True)
-        if st.button("🗑️ Clear Conversation"):
-            st.session_state.messages = []
-            st.session_state.recommended_skis = []
-            st.session_state.conversation_started = False
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-    
     st.markdown('</div>', unsafe_allow_html=True)
-
-def listen_for_speech(timeout=8):
-    """Listen for speech input"""
-    try:
-        recognizer = sr.Recognizer()
-        microphone = sr.Microphone()
-        
-        with microphone as source:
-            audio = recognizer.listen(source, timeout=timeout, phrase_time_limit=8)
-        
-        text = recognizer.recognize_google(audio)
-        return text
-        
-    except sr.WaitTimeoutError:
-        return "TIMEOUT"
-    except sr.UnknownValueError:
-        return "UNCLEAR"
-    except Exception:
-        return "ERROR"
 
 def get_ski_advice(user_input):
     """Get AI ski advice"""
@@ -435,16 +366,16 @@ def get_ski_advice(user_input):
             messages=[
                 {
                     "role": "system", 
-                    "content": "You are a ski expert. Keep responses under 60 words. When recommending skis, use format: SKI: [Brand Model] - [Description]. Recommend maximum 2-3 specific ski models."
+                    "content": "You are a ski expert. Keep responses under 80 words and conversational. When recommending skis, use format: SKI: [Brand Model] - [Description]. Recommend maximum 2-3 specific ski models."
                 },
                 {"role": "user", "content": user_input}
             ],
-            max_tokens=120,
+            max_tokens=150,
             temperature=0.7
         )
         return response.choices[0].message.content
     except Exception as e:
-        return f"Sorry, having connection issues: {str(e)}"
+        return f"Sorry, I'm having trouble connecting to get recommendations right now. Please try again!"
 
 def create_openai_audio(text):
     """Create natural audio using OpenAI voice API"""
@@ -468,8 +399,7 @@ def create_openai_audio(text):
         return f'<audio controls autoplay><source src="data:audio/mp3;base64,{audio_b64}" type="audio/mp3"></audio>'
         
     except Exception as e:
-        st.error(f"Voice generation error: {str(e)}")
-        return ""
+        return f'<div style="color: #e53e3e; font-size: 14px;">Voice response unavailable</div>'
 
 def extract_ski_recommendations(text):
     """Extract ski recommendations from AI response"""
