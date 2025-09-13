@@ -10,7 +10,7 @@ sys.path.append(current_dir)
 
 try:
     from src.ski_expert import SkiExpert
-    from src.continuous_voice_agent import create_voice_agent_interface
+    from src.real_continuous_voice import RealContinuousVoice, render_js_handler
     from config.settings import Config
 except ImportError as e:
     st.error(f"Setup Error: {e}")
@@ -18,30 +18,34 @@ except ImportError as e:
 
 # Page config
 st.set_page_config(
-    page_title="🎿 Ski Concierge - Voice Agent",
+    page_title="🎿 Ski Concierge - Continuous Voice",
     page_icon="🎿",
     layout="wide"
 )
 
 def initialize_session_state():
     """Initialize session state"""
-    if 'ski_expert' not in st.session_state:
-        st.session_state.ski_expert = SkiExpert()
+    defaults = {
+        'ski_expert': SkiExpert(),
+        'openai_client': None,
+        'conversation_history': [],
+        'current_recommendations': []
+    }
     
-    if 'openai_client' not in st.session_state:
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+    
+    # Initialize OpenAI client
+    if not st.session_state.openai_client:
         api_key = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
         if api_key:
             st.session_state.openai_client = openai.OpenAI(api_key=api_key)
-        else:
-            st.session_state.openai_client = None
-    
-    if 'conversation_history' not in st.session_state:
-        st.session_state.conversation_history = []
 
 def handle_voice_input(user_speech: str) -> str:
     """Handle voice input and return AI response"""
     try:
-        # Get AI response using ski expert
+        # Get AI response
         ai_response, recommendations = st.session_state.ski_expert.generate_response(
             user_speech,
             st.session_state.openai_client
@@ -51,28 +55,23 @@ def handle_voice_input(user_speech: str) -> str:
         st.session_state.conversation_history.append({
             'user': user_speech,
             'assistant': ai_response,
-            'recommendations': recommendations,
-            'timestamp': time.time()
+            'recommendations': recommendations
         })
         
-        # Store current recommendations
         st.session_state.current_recommendations = recommendations
         
         return ai_response
         
     except Exception as e:
-        error_response = f"I'm sorry, I encountered an error: {str(e)}. Please try again."
-        return error_response
+        return f"I apologize, there was an error: {str(e)}. Please try again."
 
 def main():
     initialize_session_state()
     
     # Header
     st.markdown("""
-    # 🎿 Ski Concierge Voice Agent
-    ## Continuous Voice Dialog to Find Your Perfect Skis
-    
-    **Talk naturally - I'll listen and respond just like a real conversation!**
+    # 🎿 Ski Concierge - Continuous Voice Agent
+    ### Talk naturally and I'll respond in real-time!
     """)
     
     # API Key check
@@ -80,44 +79,36 @@ def main():
         st.error("🔑 OpenAI API Key Required")
         with st.expander("Enter API Key"):
             temp_key = st.text_input("API Key:", type="password")
-            if temp_key and st.button("Activate"):
+            if temp_key and st.button("Activate Voice Agent"):
                 try:
                     client = openai.OpenAI(api_key=temp_key)
                     client.models.list()
                     st.session_state.openai_client = client
-                    st.success("✅ Voice agent activated!")
+                    st.success("✅ Voice agent ready!")
                     time.sleep(1)
                     st.rerun()
                 except Exception as e:
                     st.error(f"Invalid key: {e}")
         st.stop()
     
+    # JavaScript handler
+    render_js_handler()
+    
     # Main voice interface
     col1, col2 = st.columns([2, 1])
     
     with col1:
-        # Continuous voice agent interface
-        create_voice_agent_interface(
-            st.session_state.openai_client,
-            handle_voice_input
-        )
+        # Continuous voice dialog
+        voice_agent = RealContinuousVoice(st.session_state.openai_client, handle_voice_input)
+        voice_agent.render_continuous_voice_dialog()
     
     with col2:
         # Live recommendations
-        if st.session_state.get('current_recommendations'):
-            st.markdown("## 🎿 Live Recommendations")
+        if st.session_state.current_recommendations:
+            st.markdown("## 🎿 Current Recommendations")
             for i, ski in enumerate(st.session_state.current_recommendations, 1):
-                st.write(f"**{i}. {ski['name']}**")
-                st.write(f"💰 {ski['price_range']}")
-                st.write(ski['description'][:100] + "...")
-        
-        # Conversation log
-        if st.session_state.conversation_history:
-            st.markdown("## 💬 Conversation")
-            for exchange in st.session_state.conversation_history[-3:]:  # Last 3 exchanges
-                st.write(f"**You:** {exchange['user'][:50]}...")
-                st.write(f"**Me:** {exchange['assistant'][:50]}...")
-                st.markdown("---")
+                with st.expander(f"{i}. {ski['name']} - {ski['price_range']}"):
+                    st.write(ski['description'])
 
 if __name__ == "__main__":
     main()
