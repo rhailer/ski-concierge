@@ -3,56 +3,46 @@ import openai
 import sys
 import os
 import time
-from typing import Dict, List
 
 # Setup imports
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(current_dir)
 
-from src.ski_expert import SkiExpert
-from src.enhanced_voice import EnhancedVoiceHandler
-from config.settings import Config
-from assets.ski_icons import SKIER_ICON, MOUNTAIN_ICON, MIC_ICON, TERRAIN_ICONS
+try:
+    from src.ski_expert import SkiExpert
+    from src.simple_voice import SimpleVoiceHandler
+    from config.settings import Config
+except ImportError as e:
+    st.error(f"Import error: {e}")
+    st.error("Please ensure all files are in the correct directories")
+    st.stop()
 
 # Page configuration
 st.set_page_config(
-    page_title="Ski Concierge",
-    page_icon="⛷️",
+    page_title="🎿 Ski Concierge",
+    page_icon="🎿",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# Enhanced Austrian-inspired CSS
+# Enhanced CSS with Austrian ski aesthetic
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap');
     
-    * {
-        box-sizing: border-box;
-    }
-    
     .main > div {
-        padding-top: 2rem;
+        padding-top: 1rem;
     }
     
     .ski-header {
         text-align: center;
         padding: 3rem 2rem;
-        background: linear-gradient(135deg, #2c3e50 0%, #3498db 50%, #2c3e50 100%);
+        background: linear-gradient(135deg, #2c3e50 0%, #34495e 50%, #2c3e50 100%);
         color: white;
-        margin: -2rem -2rem 2rem -2rem;
+        margin: -1rem -1rem 2rem -1rem;
+        border-radius: 0 0 30px 30px;
         position: relative;
-        overflow: hidden;
-    }
-    
-    .ski-header::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='white' fill-opacity='0.03'%3E%3Cpath d='M20 20c0-11.046 8.954-20 20-20s20 8.954 20 20-8.954 20-20 20-20-8.954-20-20z'/%3E%3C/g%3E%3C/svg%3E");
+        box-shadow: 0 8px 32px rgba(0,0,0,0.2);
     }
     
     .ski-title {
@@ -61,265 +51,277 @@ st.markdown("""
         font-weight: 700;
         margin: 0;
         text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        position: relative;
-        z-index: 1;
+        background: linear-gradient(45deg, #fff, #ecf0f1);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
     }
     
     .ski-subtitle {
         font-family: 'Inter', sans-serif;
         font-size: 1.3rem;
         margin: 1rem 0 0 0;
-        opacity: 0.95;
+        opacity: 0.9;
         font-weight: 300;
-        position: relative;
-        z-index: 1;
     }
     
-    .quick-selector-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem;
-        margin: 2rem 0;
-        padding: 2rem;
+    .selector-section {
         background: white;
+        padding: 2rem;
         border-radius: 20px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-    }
-    
-    .selector-category {
-        margin-bottom: 2rem;
+        margin: 2rem 0;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+        border: 1px solid #e9ecef;
     }
     
     .selector-title {
         font-family: 'Inter', sans-serif;
-        font-size: 1.1rem;
+        font-size: 1.2rem;
         font-weight: 600;
         color: #2c3e50;
         margin-bottom: 1rem;
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.75rem;
     }
     
-    .quick-selector {
-        background: #f8f9fa;
-        border: 2px solid #e9ecef;
-        border-radius: 12px;
+    .button-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin: 1rem 0;
+    }
+    
+    .selector-button {
         padding: 1rem;
+        border: 2px solid #e9ecef;
+        border-radius: 15px;
+        background: #f8f9fa;
+        color: #2c3e50;
         cursor: pointer;
         transition: all 0.3s ease;
-        text-align: center;
         font-family: 'Inter', sans-serif;
         font-weight: 500;
+        text-align: center;
         position: relative;
-        overflow: hidden;
     }
     
-    .quick-selector:hover {
+    .selector-button:hover {
         border-color: #3498db;
-        background: #f1f8ff;
+        background: #ebf3fd;
         transform: translateY(-2px);
-        box-shadow: 0 4px 20px rgba(52, 152, 219, 0.2);
+        box-shadow: 0 4px 15px rgba(52, 152, 219, 0.2);
     }
     
-    .quick-selector.selected {
+    .selector-button.selected {
         background: linear-gradient(135deg, #3498db, #2980b9);
         color: white;
         border-color: #2980b9;
-        box-shadow: 0 4px 20px rgba(52, 152, 219, 0.3);
+        box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
     }
     
-    .quick-selector.selected::after {
+    .selector-button.selected::after {
         content: '✓';
         position: absolute;
         top: 0.5rem;
-        right: 0.5rem;
-        background: rgba(255,255,255,0.2);
-        border-radius: 50%;
-        width: 1.5rem;
-        height: 1.5rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.8rem;
+        right: 0.75rem;
         font-weight: bold;
+        font-size: 1rem;
     }
     
-    .conversation-flow {
+    .conversation-card {
         background: white;
         border-radius: 25px;
-        padding: 2rem;
+        padding: 2.5rem;
         margin: 2rem 0;
-        box-shadow: 0 12px 40px rgba(0,0,0,0.08);
+        box-shadow: 0 12px 48px rgba(0,0,0,0.1);
         border: 1px solid #e9ecef;
     }
     
-    .message-bubble {
-        margin: 1.5rem 0;
-        animation: slideIn 0.3s ease-out;
+    .message-container {
+        margin: 2rem 0;
     }
     
-    @keyframes slideIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    
-    .user-message {
+    .user-bubble {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
-        padding: 1.2rem 1.8rem;
+        padding: 1.5rem 2rem;
         border-radius: 25px 25px 8px 25px;
-        max-width: 85%;
-        margin-left: auto;
-        font-family: 'Inter', sans-serif;
-        line-height: 1.5;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-    }
-    
-    .assistant-message {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        color: #2c3e50;
-        padding: 1.2rem 1.8rem;
-        border-radius: 25px 25px 25px 8px;
-        max-width: 85%;
-        margin-right: auto;
+        margin: 1rem 0 1rem auto;
+        max-width: 80%;
         font-family: 'Inter', sans-serif;
         line-height: 1.6;
-        border-left: 4px solid #3498db;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+        animation: slideInRight 0.3s ease-out;
     }
     
-    .recommendation-showcase {
+    .assistant-bubble {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        color: #2c3e50;
+        padding: 1.5rem 2rem;
+        border-radius: 25px 25px 25px 8px;
+        margin: 1rem auto 1rem 0;
+        max-width: 80%;
+        font-family: 'Inter', sans-serif;
+        line-height: 1.7;
+        border-left: 4px solid #3498db;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        animation: slideInLeft 0.3s ease-out;
+    }
+    
+    @keyframes slideInRight {
+        from { opacity: 0; transform: translateX(20px); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+    
+    @keyframes slideInLeft {
+        from { opacity: 0; transform: translateX(-20px); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+    
+    .recommendation-card {
         background: white;
         border-radius: 20px;
         padding: 2rem;
-        margin: 1rem 0;
-        border: 2px solid #e9ecef;
+        margin: 1.5rem 0;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        border-top: 4px solid #27ae60;
         transition: all 0.3s ease;
         position: relative;
         overflow: hidden;
     }
     
-    .recommendation-showcase::before {
+    .recommendation-card::before {
         content: '';
         position: absolute;
         top: 0;
         left: 0;
-        width: 100%;
+        right: 0;
         height: 4px;
         background: linear-gradient(90deg, #27ae60, #2ecc71, #27ae60);
+        animation: shimmer 2s ease-in-out infinite;
     }
     
-    .recommendation-showcase:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 12px 35px rgba(0,0,0,0.1);
-        border-color: #3498db;
+    @keyframes shimmer {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(100%); }
+    }
+    
+    .recommendation-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 16px 48px rgba(0,0,0,0.15);
     }
     
     .ski-name {
         font-family: 'Playfair Display', serif;
-        font-size: 1.4rem;
+        font-size: 1.5rem;
         font-weight: 600;
         color: #2c3e50;
         margin: 0 0 1rem 0;
+        line-height: 1.3;
     }
     
     .ski-price {
+        display: inline-block;
         background: linear-gradient(135deg, #e74c3c, #c0392b);
         color: white;
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
+        padding: 0.75rem 1.5rem;
+        border-radius: 25px;
         font-weight: 600;
-        display: inline-block;
-        margin-bottom: 1rem;
         font-family: 'Inter', sans-serif;
+        font-size: 1.1rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
     }
     
     .ski-description {
         color: #34495e;
-        line-height: 1.7;
-        margin: 1rem 0;
+        line-height: 1.8;
+        margin: 1.5rem 0;
         font-family: 'Inter', sans-serif;
+        font-size: 1rem;
     }
     
-    .spec-grid {
+    .specs-container {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 1rem;
-        margin: 1.5rem 0;
+        margin: 2rem 0;
         padding: 1.5rem;
         background: linear-gradient(135deg, #f8f9fa, #e9ecef);
         border-radius: 15px;
     }
     
-    .spec-item {
-        text-align: center;
-        padding: 1rem;
+    .spec-card {
         background: white;
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        padding: 1.5rem 1rem;
+        border-radius: 12px;
+        text-align: center;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.05);
         font-family: 'Inter', sans-serif;
     }
     
     .spec-label {
+        font-size: 0.85rem;
         font-weight: 600;
         color: #7f8c8d;
-        font-size: 0.85rem;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 1px;
+        margin-bottom: 0.5rem;
     }
     
     .spec-value {
+        font-size: 1.1rem;
         font-weight: 600;
         color: #2c3e50;
-        font-size: 1rem;
-        margin-top: 0.25rem;
     }
     
-    .retailer-grid {
+    .retailers-container {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-        gap: 0.75rem;
-        margin: 1.5rem 0;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 1rem;
+        margin: 2rem 0;
     }
     
-    .retailer-link {
+    .retailer-button {
+        display: block;
         background: linear-gradient(135deg, #00b894, #00a085);
         color: white !important;
-        padding: 0.75rem 1rem;
+        padding: 1rem;
         border-radius: 25px;
         text-decoration: none !important;
-        font-size: 0.9rem;
         font-weight: 600;
         text-align: center;
         transition: all 0.3s ease;
         font-family: 'Inter', sans-serif;
-        display: block;
+        box-shadow: 0 4px 15px rgba(0, 184, 148, 0.3);
     }
     
-    .retailer-link:hover {
+    .retailer-button:hover {
         background: linear-gradient(135deg, #00a085, #008f75);
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(0, 184, 148, 0.4);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0, 184, 148, 0.4);
         text-decoration: none !important;
         color: white !important;
     }
     
-    .profile-summary {
+    .profile-card {
         background: linear-gradient(135deg, #667eea, #764ba2);
         color: white;
-        padding: 1.5rem;
+        padding: 2rem;
         border-radius: 20px;
-        margin: 1rem 0;
+        margin: 2rem 0;
         font-family: 'Inter', sans-serif;
+        box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
     }
     
     .profile-item {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
-        margin: 0.75rem 0;
+        gap: 1rem;
+        margin: 1rem 0;
         font-weight: 500;
+        font-size: 1rem;
     }
     
     .stButton > button {
@@ -327,38 +329,47 @@ st.markdown("""
         color: white !important;
         border: none !important;
         border-radius: 25px !important;
-        padding: 0.75rem 2rem !important;
+        padding: 1rem 2rem !important;
         font-weight: 600 !important;
         font-family: 'Inter', sans-serif !important;
         transition: all 0.3s ease !important;
-        box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3) !important;
+        box-shadow: 0 4px 20px rgba(52, 152, 219, 0.3) !important;
+        font-size: 1rem !important;
         letter-spacing: 0.5px !important;
     }
     
     .stButton > button:hover {
         background: linear-gradient(135deg, #2980b9, #21618c) !important;
-        transform: translateY(-2px) !important;
-        box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4) !important;
-    }
-    
-    .stSelectbox > div > div {
-        border-radius: 15px !important;
-        border: 2px solid #e9ecef !important;
-        font-family: 'Inter', sans-serif !important;
-    }
-    
-    .stTextInput > div > div > input {
-        border-radius: 15px !important;
-        border: 2px solid #e9ecef !important;
-        font-family: 'Inter', sans-serif !important;
-        padding: 0.75rem 1rem !important;
+        transform: translateY(-3px) !important;
+        box-shadow: 0 8px 30px rgba(52, 152, 219, 0.4) !important;
     }
     
     .stTextArea > div > div > textarea {
-        border-radius: 15px !important;
+        border-radius: 20px !important;
         border: 2px solid #e9ecef !important;
         font-family: 'Inter', sans-serif !important;
-        padding: 1rem !important;
+        padding: 1.5rem !important;
+        font-size: 1rem !important;
+        line-height: 1.6 !important;
+    }
+    
+    .stTextArea > div > div > textarea:focus {
+        border-color: #3498db !important;
+        box-shadow: 0 0 20px rgba(52, 152, 219, 0.2) !important;
+    }
+    
+    .upload-section {
+        border: 2px dashed #3498db;
+        border-radius: 20px;
+        padding: 2rem;
+        text-align: center;
+        margin: 1rem 0;
+        background: linear-gradient(135deg, #f8f9fa, #ffffff);
+    }
+    
+    .upload-section:hover {
+        border-color: #2980b9;
+        background: linear-gradient(135deg, #ebf3fd, #f8f9fa);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -380,10 +391,7 @@ def initialize_session_state():
         api_key = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
         if api_key:
             client = openai.OpenAI(api_key=api_key)
-            st.session_state.voice_handler = EnhancedVoiceHandler(
-                client, 
-                on_transcription_callback=handle_voice_input
-            )
+            st.session_state.voice_handler = SimpleVoiceHandler(client)
             st.session_state.openai_client = client
         else:
             st.session_state.voice_handler = None
@@ -392,20 +400,18 @@ def initialize_session_state():
     if 'current_recommendations' not in st.session_state:
         st.session_state.current_recommendations = []
     
-    if 'last_interaction_time' not in st.session_state:
-        st.session_state.last_interaction_time = time.time()
-
-def handle_voice_input(transcription: str):
-    """Handle voice input and process immediately"""
-    if transcription and st.session_state.openai_client:
-        process_user_input(transcription, is_voice=True)
+    if 'last_voice_input' not in st.session_state:
+        st.session_state.last_voice_input = None
 
 def process_user_input(user_input: str, is_voice: bool = False):
-    """Process user input and generate AI response"""
+    """Process user input and generate response"""
+    if not user_input.strip():
+        return None, []
+    
     try:
         # Update user profile with quick selections
         for key, value in st.session_state.quick_selections.items():
-            if value:
+            if value and value != st.session_state.ski_expert.user_profile.get(key):
                 st.session_state.ski_expert.user_profile[key] = value
         
         # Generate AI response
@@ -415,15 +421,10 @@ def process_user_input(user_input: str, is_voice: bool = False):
         )
         
         st.session_state.current_recommendations = recommendations
-        st.session_state.last_interaction_time = time.time()
         
-        # If voice input, play audio response
+        # If voice input, create audio response
         if is_voice and st.session_state.voice_handler:
-            # Use threading to not block the UI
-            def play_audio():
-                st.session_state.voice_handler.play_response(ai_response)
-            
-            threading.Thread(target=play_audio, daemon=True).start()
+            st.session_state.voice_handler.play_response(ai_response)
         
         return ai_response, recommendations
         
@@ -432,117 +433,120 @@ def process_user_input(user_input: str, is_voice: bool = False):
         return None, []
 
 def render_quick_selectors():
-    """Render enhanced quick selectors"""
-    st.markdown('<div class="quick-selector-grid">', unsafe_allow_html=True)
+    """Render quick selection interface"""
+    st.markdown('<div class="selector-section">', unsafe_allow_html=True)
     
-    # Create 4 columns for categories
-    col1, col2, col3, col4 = st.columns(4)
+    # Skill Level
+    st.markdown('<div class="selector-title">🎿 What\'s your skiing level?</div>', unsafe_allow_html=True)
+    skill_cols = st.columns(4)
+    skills = ['Beginner', 'Intermediate', 'Advanced', 'Expert']
     
-    with col1:
-        st.markdown('<div class="selector-title">🎿 Skill Level</div>', unsafe_allow_html=True)
-        skills = ['Beginner', 'Intermediate', 'Advanced', 'Expert']
-        
-        for skill in skills:
+    for i, skill in enumerate(skills):
+        with skill_cols[i]:
             selected = st.session_state.quick_selections['skill_level'] == skill.lower()
-            button_class = "quick-selector selected" if selected else "quick-selector"
-            
-            if st.button(skill, key=f"skill_{skill}", help=f"I'm a {skill.lower()} skier"):
+            if st.button(skill, key=f"skill_{skill}", type="primary" if selected else "secondary"):
                 st.session_state.quick_selections['skill_level'] = skill.lower()
                 process_user_input(f"I'm a {skill.lower()} skier")
                 st.rerun()
     
-    with col2:
-        st.markdown('<div class="selector-title">🏔️ Terrain</div>', unsafe_allow_html=True)
-        terrains = [
-            ('All-Mountain', 'all-mountain'),
-            ('Powder', 'powder'),
-            ('Carving', 'carving'),
-            ('Park', 'park')
-        ]
-        
-        for display, value in terrains:
+    st.markdown("---")
+    
+    # Terrain Preference
+    st.markdown('<div class="selector-title">🏔️ What terrain do you prefer?</div>', unsafe_allow_html=True)
+    terrain_cols = st.columns(4)
+    terrains = [
+        ('All-Mountain', 'all-mountain'),
+        ('Powder', 'powder'),
+        ('Carving/Groomers', 'carving'),
+        ('Park/Freestyle', 'park')
+    ]
+    
+    for i, (display, value) in enumerate(terrains):
+        with terrain_cols[i]:
             selected = st.session_state.quick_selections['terrain_preference'] == value
-            
-            if st.button(display, key=f"terrain_{value}", help=f"I prefer {display.lower()} skiing"):
+            if st.button(display, key=f"terrain_{value}", type="primary" if selected else "secondary"):
                 st.session_state.quick_selections['terrain_preference'] = value
                 process_user_input(f"I prefer {display.lower()} skiing")
                 st.rerun()
     
-    with col3:
-        st.markdown('<div class="selector-title">💰 Budget</div>', unsafe_allow_html=True)
-        budgets = ['Under $400', '$400-600', '$600-800', '$800+']
-        
-        for budget in budgets:
+    st.markdown("---")
+    
+    # Budget Range
+    st.markdown('<div class="selector-title">💰 What\'s your budget?</div>', unsafe_allow_html=True)
+    budget_cols = st.columns(4)
+    budgets = ['Under $400', '$400-600', '$600-800', '$800+']
+    
+    for i, budget in enumerate(budgets):
+        with budget_cols[i]:
             selected = st.session_state.quick_selections['budget_range'] == budget
-            
-            if st.button(budget, key=f"budget_{budget}", help=f"My budget is {budget}"):
+            if st.button(budget, key=f"budget_{budget}", type="primary" if selected else "secondary"):
                 st.session_state.quick_selections['budget_range'] = budget
                 process_user_input(f"My budget is {budget}")
                 st.rerun()
     
-    with col4:
-        st.markdown('<div class="selector-title">⏰ Frequency</div>', unsafe_allow_html=True)
-        frequencies = ['Occasional', 'Weekends', 'Weekly', 'Daily']
-        
-        for freq in frequencies:
-            selected = st.session_state.quick_selections['skiing_frequency'] == freq.lower()
-            
-            if st.button(freq, key=f"freq_{freq}", help=f"I ski {freq.lower()}"):
-                st.session_state.quick_selections['skiing_frequency'] = freq.lower()
-                process_user_input(f"I ski {freq.lower()}")
-                st.rerun()
-    
     st.markdown('</div>', unsafe_allow_html=True)
 
-def render_conversation():
-    """Render the conversation flow"""
-    st.markdown('<div class="conversation-flow">', unsafe_allow_html=True)
+def render_conversation_interface():
+    """Render conversation interface"""
+    st.markdown('<div class="conversation-card">', unsafe_allow_html=True)
     
     # Voice interface
     if st.session_state.voice_handler:
-        new_audio = st.session_state.voice_handler.render_voice_interface()
-        if new_audio:
+        voice_transcription = st.session_state.voice_handler.render_voice_interface()
+        if voice_transcription and voice_transcription != st.session_state.last_voice_input:
+            st.session_state.last_voice_input = voice_transcription
+            process_user_input(voice_transcription, is_voice=True)
             st.rerun()
-    else:
-        st.warning("🔑 Voice features require OpenAI API key. Add it to your environment or Streamlit secrets.")
     
-    # Text input alternative
-    st.markdown("### ✍️ Or type your message:")
+    st.markdown("---")
     
-    with st.form("text_input_form", clear_on_submit=True):
-        text_input = st.text_area(
-            "",
-            placeholder="Tell me about your skiing experience, what terrain you love, your budget, etc...",
-            height=100,
-            key="text_input_area"
-        )
-        
-        submitted = st.form_submit_button("Send Message", type="primary", use_container_width=True)
-        
-        if submitted and text_input:
-            ai_response, recommendations = process_user_input(text_input)
-            if ai_response:
+    # Text interface
+    st.markdown("### ✍️ Or tell me in text:")
+    
+    # Example prompts
+    st.markdown("**💡 Try one of these:**")
+    example_cols = st.columns(2)
+    
+    examples = [
+        "I'm looking for my first pair of skis",
+        "I ski powder 20+ days a year in Colorado", 
+        "I need carving skis under $500",
+        "What's the difference between these options?"
+    ]
+    
+    for i, example in enumerate(examples):
+        col = example_cols[i % 2]
+        with col:
+            if st.button(f"💬 {example}", key=f"example_{i}"):
+                process_user_input(example)
                 st.rerun()
     
-    # Display conversation history
+    # Text area
+    with st.form("conversation_form", clear_on_submit=True):
+        text_input = st.text_area(
+            "",
+            placeholder="Tell me about your skiing experience, what terrain you love, your budget, specific needs...",
+            height=120,
+            key="main_text_input"
+        )
+        
+        submitted = st.form_submit_button("💬 Send Message", type="primary", use_container_width=True)
+        
+        if submitted and text_input:
+            process_user_input(text_input.strip())
+            st.rerun()
+    
+    # Display conversation
     if st.session_state.ski_expert.conversation_history:
-        st.markdown("---")
-        st.markdown("### 💬 Our Conversation")
+        st.markdown("### 🗨️ Our Conversation")
         
         for exchange in st.session_state.ski_expert.conversation_history:
-            # User message
             st.markdown(f"""
-            <div class="message-bubble">
-                <div class="user-message">
+            <div class="message-container">
+                <div class="user-bubble">
                     {exchange['user']}
                 </div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Assistant message
-            st.markdown(f"""
-            <div class="message-bubble">
-                <div class="assistant-message">
+                <div class="assistant-bubble">
                     {exchange['assistant']}
                 </div>
             </div>
@@ -552,95 +556,116 @@ def render_conversation():
 
 def render_recommendations():
     """Render ski recommendations"""
-    st.markdown("## 🎿 Your Perfect Skis")
-    
     if st.session_state.current_recommendations:
+        st.markdown("## 🎿 Your Perfect Ski Matches")
+        
         for i, ski in enumerate(st.session_state.current_recommendations, 1):
             st.markdown(f"""
-            <div class="recommendation-showcase">
+            <div class="recommendation-card">
                 <div class="ski-name">{i}. {ski['name']}</div>
                 <div class="ski-price">{ski['price_range']}</div>
                 <div class="ski-description">{ski['description']}</div>
                 
-                <div class="spec-grid">
-                    <div class="spec-item">
-                        <div class="spec-label">Length</div>
+                <div class="specs-container">
+                    <div class="spec-card">
+                        <div class="spec-label">Length Range</div>
                         <div class="spec-value">{ski.get('specs', {}).get('length', 'N/A')}</div>
                     </div>
-                    <div class="spec-item">
-                        <div class="spec-label">Waist</div>
+                    <div class="spec-card">
+                        <div class="spec-label">Waist Width</div>
                         <div class="spec-value">{ski.get('specs', {}).get('waist', 'N/A')}</div>
                     </div>
-                    <div class="spec-item">
-                        <div class="spec-label">Radius</div>
+                    <div class="spec-card">
+                        <div class="spec-label">Turn Radius</div>
                         <div class="spec-value">{ski.get('specs', {}).get('radius', 'N/A')}</div>
                     </div>
                 </div>
                 
-                <div class="retailer-grid">
-                    {"".join([f'<a href="{link}" target="_blank" class="retailer-link">{retailer}</a>' 
+                <div class="retailers-container">
+                    {"".join([f'<a href="{link}" target="_blank" class="retailer-button">Buy at {retailer}</a>' 
                             for retailer, link in ski.get('retailers', {}).items()])}
                 </div>
             </div>
             """, unsafe_allow_html=True)
     else:
         st.markdown("""
-        <div style='text-align: center; padding: 3rem; color: #7f8c8d;'>
-            <h3>🎤 Ready to find your perfect skis?</h3>
-            <p>Use the voice recorder above or quick selectors to tell me about your skiing!</p>
+        <div style='text-align: center; padding: 4rem 2rem; color: #7f8c8d;'>
+            <h2 style='color: #34495e; margin-bottom: 1rem;'>🎿 Ready to find your perfect skis?</h2>
+            <p style='font-size: 1.2rem; line-height: 1.6;'>
+                Use the quick selectors above or start a conversation!<br>
+                I'll help you find exactly what you need.
+            </p>
         </div>
         """, unsafe_allow_html=True)
+
+def render_user_profile():
+    """Render user profile summary"""
+    if st.session_state.ski_expert.user_profile:
+        st.markdown("### 👤 Your Skiing Profile")
+        profile = st.session_state.ski_expert.user_profile
+        
+        st.markdown('<div class="profile-card">', unsafe_allow_html=True)
+        
+        profile_items = []
+        if profile.get('skill_level'):
+            profile_items.append(f"🎿 **Skill Level:** {profile['skill_level'].title()}")
+        if profile.get('terrain_preference'):
+            profile_items.append(f"🏔️ **Preferred Terrain:** {profile['terrain_preference'].replace('-', ' ').title()}")
+        if profile.get('budget_range'):
+            profile_items.append(f"💰 **Budget:** {profile['budget_range']}")
+        if profile.get('skiing_frequency'):
+            profile_items.append(f"⏰ **Skiing Frequency:** {profile['skiing_frequency'].title()}")
+        
+        for item in profile_items:
+            st.markdown(f'<div class="profile-item">{item}</div>', unsafe_allow_html=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
 def main():
     initialize_session_state()
     
     # Header
-    st.markdown(f"""
+    st.markdown("""
     <div class="ski-header">
         <h1 class="ski-title">🎿 Ski Concierge</h1>
-        <p class="ski-subtitle">Natural conversation to find your perfect skis</p>
+        <p class="ski-subtitle">Find your perfect skis through natural conversation</p>
     </div>
     """, unsafe_allow_html=True)
+    
+    # API Key check
+    if not st.session_state.openai_client:
+        st.error("🔑 OpenAI API key required!")
+        st.info("Please set your OPENAI_API_KEY environment variable or add it to Streamlit secrets.")
+        
+        with st.expander("💡 Enter API Key Temporarily"):
+            temp_key = st.text_input("OpenAI API Key:", type="password")
+            if temp_key and st.button("Set API Key"):
+                client = openai.OpenAI(api_key=temp_key)
+                st.session_state.voice_handler = SimpleVoiceHandler(client)
+                st.session_state.openai_client = client
+                st.success("✅ API key set! Refresh to continue.")
+        st.stop()
     
     # Quick selectors
     render_quick_selectors()
     
     # Main layout
-    conversation_col, recommendations_col = st.columns([3, 2])
+    conv_col, rec_col = st.columns([3, 2])
     
-    with conversation_col:
-        render_conversation()
+    with conv_col:
+        render_conversation_interface()
     
-    with recommendations_col:
+    with rec_col:
         render_recommendations()
-        
-        # User profile
-        if st.session_state.ski_expert.user_profile:
-            st.markdown("### 👤 Your Skiing Profile")
-            profile = st.session_state.ski_expert.user_profile
-            
-            st.markdown('<div class="profile-summary">', unsafe_allow_html=True)
-            
-            profile_items = []
-            if profile.get('skill_level'):
-                profile_items.append(f"🎿 **Skill:** {profile['skill_level'].title()}")
-            if profile.get('terrain_preference'):
-                profile_items.append(f"🏔️ **Terrain:** {profile['terrain_preference'].replace('-', ' ').title()}")
-            if profile.get('budget_range'):
-                profile_items.append(f"💰 **Budget:** {profile['budget_range']}")
-            if profile.get('skiing_frequency'):
-                profile_items.append(f"⏰ **Frequency:** {profile['skiing_frequency'].title()}")
-            
-            for item in profile_items:
-                st.markdown(f'<div class="profile-item">{item}</div>', unsafe_allow_html=True)
-            
-            st.markdown('</div>', unsafe_allow_html=True)
+        render_user_profile()
         
         # Reset button
-        if st.button("🔄 Start Fresh Conversation", use_container_width=True):
+        if st.button("🔄 Start Fresh", use_container_width=True):
+            # Clear everything
             st.session_state.ski_expert.reset_conversation()
             st.session_state.quick_selections = {k: None for k in st.session_state.quick_selections}
             st.session_state.current_recommendations = []
+            st.session_state.last_voice_input = None
             st.rerun()
 
 if __name__ == "__main__":
