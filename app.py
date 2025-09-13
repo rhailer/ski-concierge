@@ -1,351 +1,258 @@
 import streamlit as st
 import openai
+import sys
 import os
-from dotenv import load_dotenv
-import base64
-import re
+from audio_recorder_streamlit import audio_recorder
 
-# Load environment variables
-load_dotenv()
-openai.api_key = os.getenv('OPENAI_API_KEY')
+# Add the current directory to Python path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(current_dir)
 
-# Check for API key
-if not openai.api_key:
-    st.error("⚠️ OpenAI API key not found. Please add OPENAI_API_KEY to Streamlit secrets.")
+try:
+    from src.ski_expert import SkiExpert
+    from src.voice_handler import VoiceHandler
+    from src.ui_components import render_ski_recommendations, render_conversation_history, render_user_profile, create_skiing_terrain_chart
+    from config.settings import Config
+except ImportError as e:
+    st.error(f"Import error: {e}")
+    st.error("Please make sure all required modules are installed and the project structure is correct.")
     st.stop()
 
-def main():
-    st.set_page_config(
-        page_title="Ski Concierge",
-        page_icon="🎿",
-        layout="centered"
-    )
-    
-    # Simple, clean CSS
-    st.markdown("""
-    <style>
-    /* Hide Streamlit elements */
-    #MainMenu, footer, header, .stDeployButton {
-        visibility: hidden;
-    }
-    
-    /* Reduce top padding */
-    .main > div {
-        padding-top: 1rem !important;
-    }
-    
-    .block-container {
-        padding-top: 1rem !important;
-        max-width: 700px !important;
-    }
-    
-    /* App styling */
-    .stApp {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-    }
-    
-    /* Title styling */
-    .main-title {
+# Page configuration
+st.set_page_config(
+    page_title="🎿 Ski Concierge - Your Personal Ski Expert",
+    page_icon="🎿",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Custom CSS
+st.markdown("""
+<style>
+    .main-header {
         text-align: center;
-        color: white;
-        font-size: 2.5rem;
-        font-weight: bold;
-        margin-bottom: 0.5rem;
-    }
-    
-    .subtitle {
-        text-align: center;
-        color: #e2e8f0;
-        font-size: 1.1rem;
+        color: #2E86AB;
         margin-bottom: 2rem;
     }
-    
-    /* Chat container */
-    .chat-box {
-        background: rgba(255, 255, 255, 0.95);
-        border-radius: 20px;
-        padding: 2rem;
-        margin-bottom: 2rem;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-    }
-    
-    /* Messages */
-    .message {
+    .chat-container {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 10px;
         margin: 1rem 0;
-        padding: 0.75rem 1rem;
-        border-radius: 15px;
-        max-width: 80%;
-        word-wrap: break-word;
     }
-    
-    .message.user {
-        background: #007aff;
-        color: white;
-        margin-left: auto;
-        border-bottom-right-radius: 4px;
+    .ski-rec-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin: 1rem 0;
     }
-    
-    .message.assistant {
-        background: #f1f1f1;
-        color: #333;
-        margin-right: auto;
-        border-bottom-left-radius: 4px;
-    }
-    
-    /* Audio styling */
-    audio {
-        width: 100%;
-        margin: 0.5rem 0;
-    }
-    
-    /* Button styling */
     .stButton > button {
-        background: linear-gradient(135deg, #667eea, #764ba2) !important;
-        color: white !important;
-        border: none !important;
-        border-radius: 10px !important;
-        padding: 0.75rem 2rem !important;
-        font-weight: 600 !important;
-        width: 100% !important;
-        font-size: 1rem !important;
-        margin: 0.5rem 0 !important;
-    }
-    
-    .stButton > button:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.2) !important;
-    }
-    
-    /* Text input */
-    .stTextArea > div > div > textarea {
-        border-radius: 10px !important;
-        border: 2px solid #ddd !important;
-        font-size: 1rem !important;
-    }
-    
-    .stTextArea > div > div > textarea:focus {
-        border-color: #667eea !important;
-    }
-    
-    /* Ski cards */
-    .ski-recommendations {
-        background: rgba(255, 255, 255, 0.95);
-        border-radius: 15px;
-        padding: 1.5rem;
-        margin: 1rem 0;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-    }
-    
-    .ski-card {
-        background: #f8f9fa;
-        border-radius: 12px;
-        padding: 1.5rem;
-        margin: 1rem 0;
-        border: 1px solid #e9ecef;
-    }
-    
-    .ski-name {
-        font-weight: 700;
-        color: #2d3748;
-        font-size: 1.1rem;
-        margin-bottom: 0.5rem;
-    }
-    
-    .ski-description {
-        color: #4a5568;
-        margin-bottom: 1rem;
-        line-height: 1.4;
-    }
-    
-    .shop-links {
-        display: flex;
-        gap: 0.5rem;
-    }
-    
-    .shop-link {
-        background: #667eea;
+        background-color: #2E86AB;
         color: white;
-        text-decoration: none;
+        border-radius: 20px;
+        border: none;
         padding: 0.5rem 1rem;
-        border-radius: 8px;
-        font-size: 0.9rem;
-        font-weight: 500;
-        flex: 1;
-        text-align: center;
+        font-weight: bold;
     }
-    
-    .shop-link:hover {
-        background: #5a67d8;
-        text-decoration: none;
-        color: white;
+    .stButton > button:hover {
+        background-color: #1d5f8a;
     }
-    </style>
-    """, unsafe_allow_html=True)
+</style>
+""", unsafe_allow_html=True)
+
+def initialize_session_state():
+    """Initialize session state variables"""
+    if 'ski_expert' not in st.session_state:
+        st.session_state.ski_expert = SkiExpert()
     
-    # Initialize session state
-    if 'messages' not in st.session_state:
-        st.session_state.messages = []
+    if 'voice_handler' not in st.session_state:
+        api_key = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
+        if api_key:
+            client = openai.OpenAI(api_key=api_key)
+            st.session_state.voice_handler = VoiceHandler(client)
+            st.session_state.openai_client = client
+        else:
+            st.session_state.voice_handler = None
+            st.session_state.openai_client = None
     
-    if 'recommended_skis' not in st.session_state:
-        st.session_state.recommended_skis = []
+    if 'conversation_started' not in st.session_state:
+        st.session_state.conversation_started = False
+    
+    if 'current_recommendations' not in st.session_state:
+        st.session_state.current_recommendations = []
+
+def main():
+    initialize_session_state()
     
     # Header
-    st.markdown('''
-    <div class="main-title">🎿 Ski Concierge</div>
-    <div class="subtitle">Your AI ski expert with voice responses</div>
-    ''', unsafe_allow_html=True)
+    st.markdown("<h1 class='main-header'>🎿 Ski Concierge</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; font-size: 1.2em; color: #666;'>Your Personal AI Ski Expert - Find Your Perfect Skis Through Natural Conversation</p>", unsafe_allow_html=True)
     
-    # Main chat interface
-    st.markdown('<div class="chat-box">', unsafe_allow_html=True)
+    # Check for OpenAI API key
+    api_key = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
+    if not api_key:
+        st.error("🔑 OpenAI API key not found!")
+        st.info("Please set your OPENAI_API_KEY environment variable or add it to Streamlit secrets.")
+        
+        # Allow users to input API key temporarily
+        with st.expander("Enter API Key Temporarily"):
+            temp_api_key = st.text_input("OpenAI API Key:", type="password")
+            if temp_api_key:
+                os.environ["OPENAI_API_KEY"] = temp_api_key
+                client = openai.OpenAI(api_key=temp_api_key)
+                st.session_state.voice_handler = VoiceHandler(client)
+                st.session_state.openai_client = client
+                st.success("API key set! You can now use the application.")
+            else:
+                st.stop()
     
-    # Always show input form - no separate start state
-    st.markdown("### Ask me about skis!")
+    # Sidebar
+    with st.sidebar:
+        st.markdown("## 🎿 How It Works")
+        st.markdown("""
+        1. **Talk or Type** - Share your skiing experience and what you're looking for
+        2. **Expert Analysis** - I'll understand your needs and ask clarifying questions
+        3. **Perfect Match** - Get 2-3 personalized ski recommendations with purchase links
+        """)
+        
+        st.markdown("---")
+        
+        # User profile display
+        if st.session_state.ski_expert.user_profile:
+            render_user_profile(st.session_state.ski_expert.user_profile)
+            st.markdown("---")
+        
+        # Reset conversation
+        if st.button("🔄 Start New Conversation"):
+            st.session_state.ski_expert.reset_conversation()
+            st.session_state.conversation_started = False
+            st.session_state.current_recommendations = []
+            st.rerun()
+        
+        # Terrain info chart
+        st.markdown("### 📊 Ski Terrain Guide")
+        try:
+            terrain_chart = create_skiing_terrain_chart()
+            st.plotly_chart(terrain_chart, use_container_width=True)
+        except Exception as e:
+            st.write("Chart loading...")
     
-    with st.form("ski_form", clear_on_submit=True):
-        user_input = st.text_area(
-            "What would you like to know?",
-            placeholder="e.g., I'm a beginner looking for all-mountain skis under $400...",
+    # Main content area
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        st.markdown("## 💬 Let's Find Your Perfect Skis!")
+        
+        if not st.session_state.conversation_started:
+            st.markdown("""
+            Hi there! I'm your personal ski concierge with over 20 years of experience matching skiers with their perfect equipment.
+            
+            **Tell me about your skiing:** What's your experience level? What kind of terrain do you love? Any specific needs or budget considerations?
+            
+            You can either type your message or use the voice recorder below!
+            """)
+        
+        # Voice input
+        st.markdown("### 🎤 Voice Input")
+        audio_bytes = audio_recorder(
+            text="Click to record your message",
+            recording_color="#e8b62c",
+            neutral_color="#6aa36f",
+            icon_name="microphone",
+            icon_size="2x",
+        )
+        
+        # Text input
+        st.markdown("### ⌨️ Text Input")
+        text_input = st.text_area(
+            "Or type your message here:",
+            placeholder="Tell me about your skiing experience, what you're looking for, budget, etc.",
             height=100
         )
         
-        col1, col2 = st.columns(2)
-        with col1:
-            submit = st.form_submit_button("🎿 Get Recommendations")
-        with col2:
-            clear = st.form_submit_button("🔄 Clear Chat")
+        # Process input
+        user_message = ""
         
-        if submit and user_input:
-            # Add user message
-            st.session_state.messages.append({
-                "role": "user", 
-                "content": user_input
-            })
-            
-            # Get AI response
-            with st.spinner("Getting ski recommendations..."):
-                response = get_ski_advice(user_input)
-                audio_html = create_openai_audio(response)
-            
-            # Extract ski recommendations
-            skis = extract_ski_recommendations(response)
-            if skis:
-                st.session_state.recommended_skis = skis[:3]
-            
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": response,
-                "audio": audio_html
-            })
-            
-            st.rerun()
+        if audio_bytes and st.session_state.voice_handler:
+            with st.spinner("🎧 Processing your voice message..."):
+                try:
+                    user_message = st.session_state.voice_handler.transcribe_audio(audio_bytes)
+                    st.success(f"You said: *{user_message}*")
+                except Exception as e:
+                    st.error(f"Error processing audio: {e}")
         
-        if clear:
-            st.session_state.messages = []
-            st.session_state.recommended_skis = []
-            st.rerun()
-    
-    # Display conversation
-    if st.session_state.messages:
-        st.markdown("### Conversation")
+        elif text_input and st.button("Send Message", type="primary"):
+            user_message = text_input
         
-        for message in st.session_state.messages:
-            role = message["role"]
-            content = message["content"]
-            
-            st.markdown(f'<div class="message {role}">{content}</div>', unsafe_allow_html=True)
-            
-            if role == "assistant" and "audio" in message and message["audio"]:
-                st.markdown(message["audio"], unsafe_allow_html=True)
-    
-    else:
-        # Show welcome message when no conversation yet
-        st.info("👋 Hi! I'm your ski concierge. Ask me anything about skis - your experience level, what you're looking for, budget, terrain preferences, etc. I'll give you personalized recommendations with voice responses!")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Show ski recommendations
-    if st.session_state.recommended_skis:
-        st.markdown('<div class="ski-recommendations">', unsafe_allow_html=True)
-        st.markdown("### 🎿 Recommended Skis")
-        
-        for ski in st.session_state.recommended_skis:
-            search_term = ski["name"].replace(" ", "+")
-            rei_url = f"https://www.rei.com/search?q={search_term}"
-            bc_url = f"https://www.backcountry.com/search?q={search_term}"
-            evo_url = f"https://www.evo.com/search?text={search_term}"
-            
-            st.markdown(f'''
-            <div class="ski-card">
-                <div class="ski-name">{ski["name"]}</div>
-                <div class="ski-description">{ski["description"]}</div>
-                <div class="shop-links">
-                    <a href="{rei_url}" target="_blank" class="shop-link">REI</a>
-                    <a href="{bc_url}" target="_blank" class="shop-link">Backcountry</a>
-                    <a href="{evo_url}" target="_blank" class="shop-link">Evo</a>
-                </div>
-            </div>
-            ''', unsafe_allow_html=True)
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-
-def get_ski_advice(user_input):
-    """Get AI ski advice"""
-    try:
-        response = openai.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {
-                    "role": "system", 
-                    "content": """You are an expert ski consultant. Provide helpful advice in a conversational tone.
+        # Generate response
+        if user_message and st.session_state.ski_expert and st.session_state.openai_client:
+            with st.spinner("🧠 Analyzing your needs..."):
+                try:
+                    ai_response, recommendations = st.session_state.ski_expert.generate_response(
+                        user_message, 
+                        st.session_state.openai_client
+                    )
                     
-                    When recommending skis, use this format:
-                    SKI: [Brand Model] - [Description with key features]
+                    st.session_state.conversation_started = True
+                    st.session_state.current_recommendations = recommendations
                     
-                    Always recommend 2-3 specific ski models maximum.
-                    Keep responses under 120 words but be informative."""
-                },
-                {"role": "user", "content": user_input}
-            ],
-            max_tokens=200,
-            temperature=0.7
-        )
-        return response.choices[0].message.content
-    except Exception:
-        return "I'd be happy to help you find the perfect skis! Could you tell me more about your skiing experience, preferred terrain, and budget?"
-
-def create_openai_audio(text):
-    """Create audio using OpenAI voice API"""
-    try:
-        # Clean text
-        clean_text = re.sub(r'SKI:', '', text)
-        clean_text = re.sub(r'[*#]', '', clean_text).strip()
+                    # Display AI response
+                    with st.chat_message("assistant"):
+                        st.write(ai_response)
+                        
+                        # Play audio response if voice was used
+                        if audio_bytes and st.session_state.voice_handler:
+                            try:
+                                with st.spinner("🔊 Generating voice response..."):
+                                    st.session_state.voice_handler.play_audio_response(ai_response)
+                            except Exception as e:
+                                st.warning("Audio response not available")
+                
+                except Exception as e:
+                    st.error(f"Error generating response: {e}")
         
-        if len(clean_text) < 10:
-            return ""
+        # Display conversation history
+        if st.session_state.ski_expert.conversation_history:
+            st.markdown("---")
+            render_conversation_history(st.session_state.ski_expert.conversation_history)
+    
+    with col2:
+        st.markdown("## 🎿 Current Recommendations")
         
-        # Generate speech
-        response = openai.audio.speech.create(
-            model="tts-1",
-            voice="nova",
-            input=clean_text,
-            speed=1.0
-        )
+        if st.session_state.current_recommendations:
+            render_ski_recommendations(st.session_state.current_recommendations)
+        else:
+            st.info("Share your skiing preferences and I'll recommend the perfect skis for you!")
         
-        # Convert to base64
-        audio_data = response.content
-        audio_b64 = base64.b64encode(audio_data).decode()
+        # Quick tips
+        st.markdown("---")
+        st.markdown("## 💡 Quick Tips")
+        st.markdown("""
+        **To get the best recommendations, tell me about:**
+        - Your skiing ability (beginner/intermediate/advanced)
+        - Favorite terrain (groomed runs, powder, all-mountain)
+        - Your budget range
+        - Height and weight
+        - Current skis (if any)
+        - How often you ski
+        """)
         
-        return f'<audio controls autoplay><source src="data:audio/mp3;base64,{audio_b64}" type="audio/mp3"></audio>'
+        st.markdown("---")
+        st.markdown("## 🏔️ Popular Categories")
         
-    except Exception:
-        return ""
-
-def extract_ski_recommendations(text):
-    """Extract ski recommendations"""
-    ski_pattern = r'SKI:\s*([^-\n]+)\s*-\s*([^\n]+)'
-    matches = re.findall(ski_pattern, text, re.IGNORECASE)
-    return [{"name": match[0].strip(), "description": match[1].strip()} for match in matches[:3]]
+        # Quick input buttons
+        if st.button("🏂 All-Mountain Skis"):
+            st.session_state.quick_message = "I'm looking for versatile all-mountain skis"
+        
+        if st.button("❄️ Powder Skis"):
+            st.session_state.quick_message = "I want skis for deep powder skiing"
+        
+        if st.button("🏁 Carving Skis"):
+            st.session_state.quick_message = "I love carving on groomed runs"
+        
+        if st.button("👶 Beginner Skis"):
+            st.session_state.quick_message = "I'm a beginner looking for my first skis"
 
 if __name__ == "__main__":
     main()

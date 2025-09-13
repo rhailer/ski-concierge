@@ -1,29 +1,29 @@
-# 🎿 Ski Concierge
+# 🎿 Ski Concierge - Your Personal AI Ski Expert
 
-An AI-powered voice agent that provides personalized ski recommendations through natural conversation.
+A world-class voice-enabled AI application that helps users find their perfect skis through natural conversation. Built with Streamlit, OpenAI GPT-4, and Whisper for voice interaction.
 
-## Features
+![Ski Concierge Demo](https://via.placeholder.com/800x400/2E86AB/ffffff?text=Ski+Concierge+Demo)
 
-- 🎤 Voice conversation with OpenAI's natural speech
-- 🎿 Expert ski recommendations 
-- 🛒 Direct links to ski retailers
-- 📱 Mobile-optimized interface
-- 💬 iPhone-style messaging
+## 🌟 Features
 
-## Setup
+- **Voice Interaction**: Natural speech-to-text and text-to-speech using OpenAI Whisper and TTS
+- **Expert Consultation**: AI-powered ski expert with 20+ years of simulated experience
+- **Personalized Recommendations**: Get 2-3 specific ski recommendations with detailed reasoning
+- **Real Pricing & Links**: Current prices and direct links to retailers (REI, Backcountry, etc.)
+- **Progressive Conversation**: Smart follow-up questions to understand your exact needs
+- **Visual Profile Building**: See your skiing profile develop as you chat
+- **Production Ready**: Error handling, responsive design, and professional UX
 
-1. Clone the repository
-2. Install dependencies: `pip install -r requirements.txt`
-3. Add your OpenAI API key to Streamlit Cloud secrets
-4. Run locally: `streamlit run app.py`
+## 🚀 Quick Start
 
-## Live Demo
+### Prerequisites
 
-[Your Streamlit Cloud URL will go here]
+- Python 3.8+
+- OpenAI API key
 
-## Tech Stack
+### Installation
 
-- Streamlit (UI)
-- OpenAI GPT-3.5-turbo (Conversations) 
-- OpenAI TTS (Voice responses)
-- Google Speech Recognition (Voice input)
+1. **Clone the repository:**
+```bash
+git clone https://github.com/rhailer/ski-concierge.git
+cd ski-concierge
